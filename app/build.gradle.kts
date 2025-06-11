@@ -1,5 +1,13 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
+}
+
+val properties = Properties()
+val localPropertiesFile = project.rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    properties.load(localPropertiesFile.inputStream())
 }
 
 android {
@@ -24,35 +32,38 @@ android {
                 "proguard-rules.pro"
             )
         }
+        forEach { buildType ->
+            val apiKey = properties.getProperty("GEMINI_API_KEY")
+            buildType.buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+        }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
+
+    // ===================================================================
+    // TAMBAHKAN BLOK INI UNTUK MENGAKTIFKAN KEMBALI BUILDCONFIG
+    // ===================================================================
+    buildFeatures {
+        buildConfig = true
+    }
+    // ===================================================================
+    // AKHIR DARI BLOK YANG DITAMBAHKAN
+    // ===================================================================
 }
 
 dependencies {
-    // In build.gradle.kts (Module: app)
-
+    // ... dependensi Anda ...
     implementation(libs.appcompat)
     implementation(libs.material)
     implementation(libs.activity)
     implementation(libs.constraintlayout)
     implementation(libs.generativeai)
-
-    // Add the entire CameraX bundle with just one line
+    implementation(libs.guava)
     implementation(libs.bundles.camera)
-
     testImplementation(libs.junit)
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
-
     implementation(libs.glide)
-    implementation(libs.appcompat)
-    implementation(libs.material)
-    implementation(libs.activity)
-    implementation(libs.constraintlayout)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.ext.junit)
-    androidTestImplementation(libs.espresso.core)
 }
