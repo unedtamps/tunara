@@ -1,67 +1,77 @@
 package com.example.camerafunction;
 
 import android.content.Context;
-import android.content.Intent;
 import android.net.Uri;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
-import java.util.ArrayList;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 
 public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoViewHolder> {
 
-    private Context context;
-    private List<Uri> photoUris;
+    private final Context context;
+    private final List<PhotoItem> photoItems;
+    private final OnPhotoClickListener listener;
 
     public interface OnPhotoClickListener {
         void onPhotoClick(Uri photoUri);
     }
 
-    private final OnPhotoClickListener listener;
-
-    public HistoryAdapter(Context context, List<Uri> photoUris, OnPhotoClickListener listener) {
+    public HistoryAdapter(Context context, List<PhotoItem> photoItems, OnPhotoClickListener listener) {
         this.context = context;
-        this.photoUris = photoUris;
+        this.photoItems = photoItems;
         this.listener = listener;
     }
 
     @NonNull
     @Override
     public PhotoViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        View view = LayoutInflater.from(context).inflate(R.layout.item_history_photo, parent, false);
+        // Use the new card layout
+        View view = LayoutInflater.from(context).inflate(R.layout.item_history_card, parent, false);
         return new PhotoViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(@NonNull PhotoViewHolder holder, int position) {
-        Uri uri = photoUris.get(position);
-        Glide.with(context)
-                .load(uri)
-                .centerCrop()
-                .into(holder.imageView);
-        holder.bind(uri, listener);
+        PhotoItem item = photoItems.get(position);
+        holder.bind(item, listener);
     }
 
     @Override
     public int getItemCount() {
-        return photoUris.size();
+        return photoItems.size();
     }
 
     static class PhotoViewHolder extends RecyclerView.ViewHolder {
         ImageView imageView;
+        TextView dateTextView;
 
         public PhotoViewHolder(@NonNull View itemView) {
             super(itemView);
             imageView = itemView.findViewById(R.id.historyImageView);
+            dateTextView = itemView.findViewById(R.id.dateTextView);
         }
 
-        public void bind(final Uri photoUri, final OnPhotoClickListener listener) {
-            itemView.setOnClickListener(v -> listener.onPhotoClick(photoUri));
+        public void bind(final PhotoItem item, final OnPhotoClickListener listener) {
+            // Load image using Glide
+            Glide.with(itemView.getContext())
+                    .load(item.getUri())
+                    .into(imageView);
+
+            // Format and set the date
+            SimpleDateFormat sdf = new SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault());
+            dateTextView.setText(sdf.format(new Date(item.getTimestamp())));
+
+            // Set click listener
+            itemView.setOnClickListener(v -> listener.onPhotoClick(item.getUri()));
         }
     }
 }

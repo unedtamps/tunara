@@ -3,11 +3,16 @@ package com.example.camerafunction;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.net.Uri;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.stream.Collectors;
+import android.provider.MediaStore;
+import android.database.Cursor;
 
-// Helper class to manage saving and loading photo URIs
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 public class PhotoHistoryManager {
     private static final String PREFS_NAME = "PhotoHistoryPrefs";
     private static final String KEY_PHOTO_URIS = "photo_uris";
@@ -19,9 +24,32 @@ public class PhotoHistoryManager {
         prefs.edit().putStringSet(KEY_PHOTO_URIS, uriSet).apply();
     }
 
-    public static Set<Uri> getPhotoUris(Context context) {
+    // This method is now updated to return a List of PhotoItem objects
+    public static List<PhotoItem> getPhotoHistory(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Set<String> uriStrings = prefs.getStringSet(KEY_PHOTO_URIS, new HashSet<>());
-        return uriStrings.stream().map(Uri::parse).collect(Collectors.toSet());
+        List<PhotoItem> photoItems = new ArrayList<>();
+
+        String[] projection = {MediaStore.Images.Media.DATE_TAKEN};
+
+        for (String uriString : uriStrings) {
+            Uri uri = Uri.parse(uriString);
+            long timestamp = 0;
+            try (Cursor cursor = context.getContentResolver().query(uri, projection, null, null, null)) {
+                if (cursor != null && cursor.moveToFirst()) {
+                    int dateColumn = cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DATE_TAKEN);
+                    timestamp = cursor.getLong(dateColumn);
+                }
+            } catch (Exception e) {
+                // Could not get date, maybe it's a file from gallery without metadata
+                timestamp = System.currentTimeMillis(); // Fallback to now
+            }
+            photoItems.add(new PhotoItem(uri, timestamp));
+        }
+
+        // Sort by date, newest first
+        Collections.sort(photoItems, (o1, o2) -> Long.compare(o2.getTimestamp(), o1.getTimestamp()));
+
+        return photoItems;
     }
 }

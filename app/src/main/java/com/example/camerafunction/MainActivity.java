@@ -20,9 +20,10 @@ public class MainActivity extends AppCompatActivity {
 
         // Load the default fragment when the app starts
         if (savedInstanceState == null) {
+            // Start with HomeFragment
             loadFragment(new HomeFragment());
-            // Set the camera item as selected in the nav bar
-            navView.setSelectedItemId(R.id.navigation_camera);
+            // Set the home item as selected in the nav bar
+            navView.setSelectedItemId(R.id.navigation_home);
         }
 
         // Set the listener for the navigation items
