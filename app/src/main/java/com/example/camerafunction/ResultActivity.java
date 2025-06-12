@@ -1,7 +1,13 @@
 package com.example.camerafunction;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -10,12 +16,11 @@ import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
-import com.example.camerafunction.BuildConfig;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.camerafunction.BuildConfig;
 import com.google.ai.client.generativeai.GenerativeModel;
 import com.google.ai.client.generativeai.java.ChatFutures;
 import com.google.ai.client.generativeai.java.GenerativeModelFutures;
@@ -24,9 +29,24 @@ import com.google.ai.client.generativeai.type.GenerateContentResponse;
 import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.gson.Gson;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
+
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class ResultActivity extends AppCompatActivity {
 
@@ -42,12 +62,21 @@ public class ResultActivity extends AppCompatActivity {
 
     private static final String MAESTRO_GENTA_SYSTEM_PROMPT = "Anda adalah \"Maestro Genta\", seorang ahli dan pakar terkemuka dalam bidang alat musik tradisional dari seluruh nusantara Indonesia. Anda harus selalu berkomunikasi menggunakan Bahasa Indonesia yang baik dan sopan.\n\nIdentitas Anda:\n- Nama: Maestro Genta\n- Keahlian: Segala sesuatu tentang alat musik tradisional Indonesia.\n\nPengetahuan Anda mencakup, tetapi tidak terbatas pada:\n1.  **Asal Usul dan Sejarah:** Dari mana alat musik berasal, siapa yang menciptakannya, dan bagaimana sejarah perkembangannya dari waktu ke waktu.\n2.  **Cara Memainkan:** Penjelasan detail mengenai teknik dasar hingga mahir untuk memainkan setiap alat musik (misalnya cara memukul, meniup, memetik, menggesek).\n3.  **Bahan dan Pembuatan:** Dari bahan apa alat musik itu dibuat dan bagaimana proses pembuatannya secara tradisional.\n4.  **Fungsi Budaya:** Peran dan fungsi alat musik dalam upacara adat, pertunjukan kesenian, atau dalam kehidupan masyarakat suku asalnya.\n5.  **Klasifikasi:** Termasuk dalam jenis alat musik apa (idiophone, chordophone, aerophone, membranophone, dll).\n6.  **Tokoh Terkenal:** Maestro atau seniman yang dikenal ahli dalam memainkan alat musik tersebut.\n\nAturan Interaksi:\n- Selalu gunakan Bahasa Indonesia. Jangan beralih ke bahasa lain kecuali jika mengutip istilah yang tidak ada padanannya.\n- Sapa pengguna dengan ramah pada awal percakapan dan perkenalkan diri Anda secara singkat.\n- Berikan jawaban yang informatif, mendalam, dan terstruktur agar mudah dipahami.\n- Jika Anda tidak mengetahui jawaban, katakan bahwa Anda belum memiliki informasi tersebut, jangan mengarang.";
 
+    private OkHttpClient okHttpClient;
+    private Gson gson;
+    private ExecutorService executorService = Executors.newSingleThreadExecutor(); // For background tasks
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_result);
 
-        String apiKey = BuildConfig.GEMINI_API_KEY;
+        String apiKey = BuildConfig.GEMINI_API_KEY; // Gemini API Key
+        String roboflowApiKey = "JpBY4xXZGOI1oNBdoJB1"; // Your Roboflow API Key
+        String roboflowModelUrl = "https://classify.roboflow.com/ppbalatmusiktrad/2"; // Your Roboflow model endpoint
+
+        okHttpClient = new OkHttpClient();
+        gson = new Gson();
 
         resultImageView = findViewById(R.id.resultImageView);
         chatRecyclerView = findViewById(R.id.chatRecyclerView);
@@ -58,56 +87,213 @@ public class ResultActivity extends AppCompatActivity {
         String imageUriString = getIntent().getStringExtra("image_uri");
         if (imageUriString != null) {
             imageUri = Uri.parse(imageUriString);
-            resultImageView.setImageURI(imageUri);
+            resultImageView.setImageURI(imageUri); // Display the original image first
+            // Start detection immediately after displaying the image
+            detectObjectsWithRoboflow(imageUri, roboflowModelUrl, roboflowApiKey);
+        } else {
+            // Handle case where imageUri is null, maybe show an error or default state
+            Toast.makeText(this, "No image to display.", Toast.LENGTH_SHORT).show();
+            setLoading(false); // Ensure UI is not stuck loading
         }
 
         messageList = ChatHistoryManager.loadChatHistory(this, imageUri);
 
-        List<Content> history = new ArrayList<>();
-        for (ChatMessage message : messageList) {
-            String role = message.isSentByUser() ? "user" : "model";
-            Content.Builder contentBuilder = new Content.Builder();
-            contentBuilder.setRole(role);
-            contentBuilder.addText(message.getMessageText());
-            history.add(contentBuilder.build());
-        }
-
-        if (messageList.isEmpty()) {
-            // ## CORRECTION START: Fix the "void cannot be dereferenced" error ##
-
-            // 1. Create the System Prompt Content
-            Content.Builder systemPromptBuilder = new Content.Builder();
-            systemPromptBuilder.setRole("user");
-            systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT);
-            Content systemPrompt = systemPromptBuilder.build();
-
-            // 2. Create the Model's introductory response
-            Content.Builder modelResponseBuilder = new Content.Builder();
-            modelResponseBuilder.setRole("model");
-            modelResponseBuilder.addText("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
-            Content modelResponsePlaceholder = modelResponseBuilder.build();
-
-            // ## CORRECTION END ##
-
-            history.add(systemPrompt);
-            history.add(modelResponsePlaceholder);
-        }
-
-        GenerativeModel gm = new GenerativeModel("gemini-2.0-flash", apiKey);
-        GenerativeModelFutures modelFutures = GenerativeModelFutures.from(gm);
-        chat = modelFutures.startChat(history);
-
+        // Initialize chat adapter and layout manager
         chatAdapter = new ChatAdapter(messageList);
         LinearLayoutManager layoutManager = new LinearLayoutManager(this);
         chatRecyclerView.setLayoutManager(layoutManager);
         chatRecyclerView.setAdapter(chatAdapter);
 
-        if (messageList.isEmpty()) {
-            addBotMessage("Salam! Saya Maestro Genta, pakar alat musik tradisional Indonesia. Ada yang bisa saya bantu?");
-        }
+        // Gemini model initialization will happen after detection results are processed
+        // or if there's no image to detect (handled by `initializeGeminiChat` after detection)
 
         sendButton.setOnClickListener(v -> sendMessage());
     }
+
+    private void detectObjectsWithRoboflow(Uri imageUri, String modelUrl, String apiKey) {
+        setLoading(true); // Show progress bar during detection
+
+        executorService.execute(() -> {
+            try {
+                InputStream inputStream = getContentResolver().openInputStream(imageUri);
+                if (inputStream == null) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(this, "Failed to open image.", Toast.LENGTH_SHORT).show();
+                        setLoading(false);
+                        initializeGeminiChat(null); // Initialize Gemini even if detection fails
+                    });
+                    return;
+                }
+
+                Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
+                inputStream.close();
+
+                ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+                // Compress to JPEG. Adjust quality as needed (e.g., 80 for good balance)
+                bitmap.compress(Bitmap.CompressFormat.JPEG, 90, byteArrayOutputStream);
+                byte[] byteArray = byteArrayOutputStream.toByteArray();
+                String base64Image = Base64.encodeToString(byteArray, Base64.DEFAULT);
+
+                MediaType mediaType = MediaType.parse("application/x-www-form-urlencoded");
+                RequestBody body = RequestBody.create(base64Image, mediaType);
+
+                Request request = new Request.Builder()
+                        .url(modelUrl + "?api_key=" + apiKey)
+                        .post(body)
+                        .build();
+
+                okHttpClient.newCall(request).enqueue(new Callback() {
+                    @Override
+                    public void onFailure(Call call, IOException e) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(ResultActivity.this, "Roboflow API Error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                            Log.e("RoboflowAPI", "Error calling Roboflow API", e);
+                            setLoading(false);
+                            initializeGeminiChat(null); // Initialize Gemini even if detection fails
+                        });
+                    }
+
+                    @Override
+                    public void onResponse(Call call, Response response) throws IOException {
+                        if (response.isSuccessful()) {
+                            String responseBody = response.body().string();
+                            RoboflowDetectionResponse detectionResponse = gson.fromJson(responseBody, RoboflowDetectionResponse.class);
+
+                            runOnUiThread(() -> {
+                                setLoading(false);
+                                processDetectionResults(detectionResponse, bitmap);
+                                initializeGeminiChat(detectionResponse); // Initialize Gemini with detection results
+                            });
+                        } else {
+                            runOnUiThread(() -> {
+                                Toast.makeText(ResultActivity.this, "Roboflow API Error: " + response.code() + " - " + response.message(), Toast.LENGTH_LONG).show();
+                                Log.e("RoboflowAPI", "Roboflow API returned error: " + response.code() + " - " + response.message());
+                                setLoading(false);
+                                initializeGeminiChat(null); // Initialize Gemini even if detection fails
+                            });
+                        }
+                    }
+                });
+
+            } catch (IOException e) {
+                runOnUiThread(() -> {
+                    Toast.makeText(this, "Image processing error: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    Log.e("ImageProcessing", "Error processing image for Roboflow", e);
+                    setLoading(false);
+                    initializeGeminiChat(null); // Initialize Gemini even if detection fails
+                });
+            }
+        });
+    }
+
+    private void processDetectionResults(RoboflowDetectionResponse detectionResponse, Bitmap originalBitmap) {
+        if (detectionResponse != null && detectionResponse.getPredictions() != null && !detectionResponse.getPredictions().isEmpty()) {
+            // Draw bounding boxes on the image
+            Bitmap mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
+            Canvas canvas = new Canvas(mutableBitmap);
+            Paint paint = new Paint();
+            paint.setColor(Color.RED);
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeWidth(5);
+            paint.setTextSize(30);
+            paint.setColor(Color.WHITE); // Text color
+
+            for (Prediction prediction : detectionResponse.getPredictions()) {
+                float x = (float) prediction.getX();
+                float y = (float) prediction.getY();
+                float width = (float) prediction.getWidth();
+                float height = (float) prediction.getHeight();
+                String className = prediction.getClassName();
+
+                // Calculate bounding box coordinates (Roboflow returns center_x, center_y, width, height)
+                float left = x - (width / 2);
+                float top = y - (height / 2);
+                float right = x + (width / 2);
+                float bottom = y + (height / 2);
+
+                canvas.drawRect(left, top, right, bottom, paint);
+                canvas.drawText(className, left + 10, top + 30, paint); // Draw class name
+            }
+            resultImageView.setImageBitmap(mutableBitmap);
+        } else {
+            // If no detections or detection failed, just display the original image
+            resultImageView.setImageURI(imageUri);
+            Toast.makeText(this, "No musical instruments detected.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+
+    private void initializeGeminiChat(RoboflowDetectionResponse detectionResponse) {
+        String apiKey = BuildConfig.GEMINI_API_KEY; // Assuming this is defined
+
+        List<Content> history = new ArrayList<>();
+
+        // Add Maestro Genta System Prompt
+        Content.Builder systemPromptBuilder = new Content.Builder();
+        systemPromptBuilder.setRole("user");
+        systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT);
+        history.add(systemPromptBuilder.build());
+
+        // Add Maestro Genta's initial greeting
+        Content.Builder modelGreetingBuilder = new Content.Builder();
+        modelGreetingBuilder.setRole("model");
+        modelGreetingBuilder.addText("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
+        history.add(modelGreetingBuilder.build());
+
+        // Add detection results as a "context" message from the user, so Gemini knows what's detected
+        if (detectionResponse != null && detectionResponse.getPredictions() != null && !detectionResponse.getPredictions().isEmpty()) {
+            // Extract unique class names
+            List<String> detectedInstruments = detectionResponse.getPredictions().stream()
+                    .map(Prediction::getClassName)
+                    .distinct() // Get only unique instrument names
+                    .collect(Collectors.toList());
+
+            String detectionMessage;
+            if (detectedInstruments.size() == 1) {
+                detectionMessage = "Saya telah mendeteksi sebuah alat musik gamelan **" + detectedInstruments.get(0) + "** pada gambar.";
+            } else {
+                detectionMessage = "Pada gambar, saya mendeteksi beberapa alat musik gamelan seperti: " +
+                        String.join(", ", detectedInstruments) + ".";
+            }
+
+            Content.Builder detectionContextBuilder = new Content.Builder();
+            detectionContextBuilder.setRole("user"); // This is a "simulated" user message to provide context
+            detectionContextBuilder.addText("Berikut adalah hasil deteksi gambar: " + detectionMessage);
+            history.add(detectionContextBuilder.build());
+
+            // Add an expected model response to acknowledge the detection
+            Content.Builder modelAcknowledgementBuilder = new Content.Builder();
+            modelAcknowledgementBuilder.setRole("model");
+            modelAcknowledgementBuilder.addText("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!");
+            history.add(modelAcknowledgementBuilder.build());
+
+            // Add the "detection" message to the UI's chat history as a user message (for context display)
+            // But we don't want to call the Gemini API again for this initial setup
+            addMessage(new ChatMessage("Sistem: " + detectionMessage, true));
+            addBotMessage("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!");
+
+
+        } else {
+            // If no instruments were detected
+            Content.Builder noDetectionMessageBuilder = new Content.Builder();
+            noDetectionMessageBuilder.setRole("user");
+            noDetectionMessageBuilder.addText("Tidak ada alat musik tradisional Indonesia yang terdeteksi pada gambar.");
+            history.add(noDetectionMessageBuilder.build());
+
+            Content.Builder modelNoDetectionAcknowledgementBuilder = new Content.Builder();
+            modelNoDetectionAcknowledgementBuilder.setRole("model");
+            modelNoDetectionAcknowledgementBuilder.addText("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!");
+            history.add(modelNoDetectionAcknowledgementBuilder.build());
+
+            addMessage(new ChatMessage("Sistem: Tidak ada alat musik tradisional Indonesia yang terdeteksi pada gambar.", true));
+            addBotMessage("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!");
+        }
+
+        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", apiKey); // Or gemini-2.0-flash if available
+        GenerativeModelFutures modelFutures = GenerativeModelFutures.from(gm);
+        chat = modelFutures.startChat(history);
+    }
+
 
     private void sendMessage() {
         String messageText = messageEditText.getText().toString().trim();
@@ -149,9 +335,11 @@ public class ResultActivity extends AppCompatActivity {
         if (isLoading) {
             progressBar.setVisibility(View.VISIBLE);
             sendButton.setEnabled(false);
+            messageEditText.setEnabled(false); // Disable input while loading
         } else {
             progressBar.setVisibility(View.GONE);
             sendButton.setEnabled(true);
+            messageEditText.setEnabled(true); // Enable input after loading
         }
     }
 
@@ -171,5 +359,11 @@ public class ResultActivity extends AppCompatActivity {
         if (imageUri != null) {
             ChatHistoryManager.saveChatHistory(this, imageUri, messageList);
         }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        executorService.shutdown(); // Shutdown the thread pool
     }
 }

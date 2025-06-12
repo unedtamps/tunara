@@ -66,4 +66,9 @@ dependencies {
     androidTestImplementation(libs.ext.junit)
     androidTestImplementation(libs.espresso.core)
     implementation(libs.glide)
+    implementation(platform(libs.okhttp.bom)) // Use the BOM for consistent OkHttp versions
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor) // Optional: for network request logging
+    implementation(libs.gson) // For JSON parsing
+
 }
