@@ -88,14 +88,12 @@ public class ResultActivity extends AppCompatActivity {
         if (imageUriString != null) {
             imageUri = Uri.parse(imageUriString);
             resultImageView.setImageURI(imageUri); // Display the original image first
-            // Start detection immediately after displaying the image
-            detectObjectsWithRoboflow(imageUri, roboflowModelUrl, roboflowApiKey);
         } else {
-            // Handle case where imageUri is null, maybe show an error or default state
             Toast.makeText(this, "No image to display.", Toast.LENGTH_SHORT).show();
             setLoading(false); // Ensure UI is not stuck loading
         }
 
+        // Load chat history first
         messageList = ChatHistoryManager.loadChatHistory(this, imageUri);
 
         // Initialize chat adapter and layout manager
@@ -104,8 +102,18 @@ public class ResultActivity extends AppCompatActivity {
         chatRecyclerView.setLayoutManager(layoutManager);
         chatRecyclerView.setAdapter(chatAdapter);
 
-        // Gemini model initialization will happen after detection results are processed
-        // or if there's no image to detect (handled by `initializeGeminiChat` after detection)
+        // Only perform image detection and initialize Gemini chat with detection results if it's a new chat (history is empty)
+        if (messageList.isEmpty()) {
+            if (imageUri != null) { // Only detect if an image is available
+                detectObjectsWithRoboflow(imageUri, roboflowModelUrl, roboflowApiKey);
+            } else {
+                // If no image and no history, just initialize Gemini without detection context
+                initializeGeminiChat(null);
+            }
+        } else {
+            // If history exists, just initialize Gemini chat with the loaded history
+            initializeGeminiChatFromHistory();
+        }
 
         sendButton.setOnClickListener(v -> sendMessage());
     }
@@ -222,25 +230,75 @@ public class ResultActivity extends AppCompatActivity {
         }
     }
 
+    // New method to initialize chat when history exists
+    // New method to initialize chat when history exists
+    private void initializeGeminiChatFromHistory() {
+        String apiKey = BuildConfig.GEMINI_API_KEY;
+
+        List<Content> history = new ArrayList<>();
+        // Add the Maestro Genta system prompt as the very first content
+        Content.Builder systemPromptBuilder = new Content.Builder();
+        systemPromptBuilder.setRole("user"); // System prompts are typically given as a user turn
+        systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT); // Call addText
+        Content systemPromptContent = systemPromptBuilder.build(); // Then call build
+        history.add(systemPromptContent);
+
+        // Add the model's initial greeting, following the system prompt
+        Content.Builder initialGreetingBuilder = new Content.Builder(); // Declare a new builder
+        initialGreetingBuilder.setRole("model");
+        initialGreetingBuilder.addText("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
+        Content initialGreetingContent = initialGreetingBuilder.build(); // Then call build
+        history.add(initialGreetingContent);
+
+
+        // Reconstruct the Gemini chat history from messageList, skipping the Maestro Genta system prompt
+        // and initial greeting if they are in messageList as displayed to user.
+        // It's crucial that the Gemini model's history directly reflects the conversation turns,
+        // without including UI-specific "Sistem" messages or duplicate initial greetings.
+        for (ChatMessage message : messageList) {
+            // Skip messages that are internal system messages or the initial bot greeting
+            // if they were added to messageList just for display purposes
+            if (message.getMessageText().startsWith("Sistem:") ||
+                    message.getMessageText().equals("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!") ||
+                    message.getMessageText().equals("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!")) {
+                continue; // Skip these messages from being added to Gemini's actual history
+            }
+
+            String role = message.isSentByUser() ? "user" : "model";
+            Content.Builder contentBuilder = new Content.Builder();
+            contentBuilder.setRole(role);
+            contentBuilder.addText(message.getMessageText());
+            history.add(contentBuilder.build());
+        }
+
+        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", apiKey);
+        GenerativeModelFutures modelFutures = GenerativeModelFutures.from(gm);
+        chat = modelFutures.startChat(history);
+    }
+
 
     private void initializeGeminiChat(RoboflowDetectionResponse detectionResponse) {
-        String apiKey = BuildConfig.GEMINI_API_KEY; // Assuming this is defined
+        String apiKey = BuildConfig.GEMINI_API_KEY;
 
         List<Content> history = new ArrayList<>();
 
-        // Add Maestro Genta System Prompt
+        // Add Maestro Genta System Prompt (user role, NOT displayed to user)
         Content.Builder systemPromptBuilder = new Content.Builder();
         systemPromptBuilder.setRole("user");
         systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT);
         history.add(systemPromptBuilder.build());
 
-        // Add Maestro Genta's initial greeting
+        // Add Maestro Genta's initial greeting (model role, WILL be displayed to user)
         Content.Builder modelGreetingBuilder = new Content.Builder();
         modelGreetingBuilder.setRole("model");
         modelGreetingBuilder.addText("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
         history.add(modelGreetingBuilder.build());
+        // Also add this to the UI's messageList
+        addBotMessage("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
 
-        // Add detection results as a "context" message from the user, so Gemini knows what's detected
+
+        // Add detection results as a "context" message from the user role
+        // This is sent to the Gemini model for context but NOT explicitly displayed as a user message in chat.
         if (detectionResponse != null && detectionResponse.getPredictions() != null && !detectionResponse.getPredictions().isEmpty()) {
             // Extract unique class names
             List<String> detectedInstruments = detectionResponse.getPredictions().stream()
@@ -248,33 +306,29 @@ public class ResultActivity extends AppCompatActivity {
                     .distinct() // Get only unique instrument names
                     .collect(Collectors.toList());
 
-            String detectionMessage;
+            String detectionMessageForGemini;
             if (detectedInstruments.size() == 1) {
-                detectionMessage = "Saya telah mendeteksi sebuah alat musik gamelan **" + detectedInstruments.get(0) + "** pada gambar.";
+                detectionMessageForGemini = "Saya telah mendeteksi sebuah alat musik gamelan **" + detectedInstruments.get(0) + "** pada gambar.";
             } else {
-                detectionMessage = "Pada gambar, saya mendeteksi beberapa alat musik gamelan seperti: " +
+                detectionMessageForGemini = "Pada gambar, saya mendeteksi beberapa alat musik gamelan seperti: " +
                         String.join(", ", detectedInstruments) + ".";
             }
 
             Content.Builder detectionContextBuilder = new Content.Builder();
-            detectionContextBuilder.setRole("user"); // This is a "simulated" user message to provide context
-            detectionContextBuilder.addText("Berikut adalah hasil deteksi gambar: " + detectionMessage);
+            detectionContextBuilder.setRole("user");
+            detectionContextBuilder.addText("Berikut adalah hasil deteksi gambar: " + detectionMessageForGemini);
             history.add(detectionContextBuilder.build());
 
-            // Add an expected model response to acknowledge the detection
+            // Add the model's acknowledgement (model role, WILL be displayed to user)
             Content.Builder modelAcknowledgementBuilder = new Content.Builder();
             modelAcknowledgementBuilder.setRole("model");
             modelAcknowledgementBuilder.addText("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!");
             history.add(modelAcknowledgementBuilder.build());
-
-            // Add the "detection" message to the UI's chat history as a user message (for context display)
-            // But we don't want to call the Gemini API again for this initial setup
-            addMessage(new ChatMessage("Sistem: " + detectionMessage, true));
+            // Also add this to the UI's messageList
             addBotMessage("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!");
 
-
         } else {
-            // If no instruments were detected
+            // If no instruments were detected, add context to Gemini and display a bot message
             Content.Builder noDetectionMessageBuilder = new Content.Builder();
             noDetectionMessageBuilder.setRole("user");
             noDetectionMessageBuilder.addText("Tidak ada alat musik tradisional Indonesia yang terdeteksi pada gambar.");
@@ -284,12 +338,11 @@ public class ResultActivity extends AppCompatActivity {
             modelNoDetectionAcknowledgementBuilder.setRole("model");
             modelNoDetectionAcknowledgementBuilder.addText("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!");
             history.add(modelNoDetectionAcknowledgementBuilder.build());
-
-            addMessage(new ChatMessage("Sistem: Tidak ada alat musik tradisional Indonesia yang terdeteksi pada gambar.", true));
+            // Also add this to the UI's messageList
             addBotMessage("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!");
         }
 
-        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", apiKey); // Or gemini-2.0-flash if available
+        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", apiKey);
         GenerativeModelFutures modelFutures = GenerativeModelFutures.from(gm);
         chat = modelFutures.startChat(history);
     }
