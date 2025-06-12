@@ -200,11 +200,17 @@ public class ResultActivity extends AppCompatActivity {
             Bitmap mutableBitmap = originalBitmap.copy(Bitmap.Config.ARGB_8888, true);
             Canvas canvas = new Canvas(mutableBitmap);
             Paint paint = new Paint();
-            paint.setColor(Color.RED);
+
+            // Mengatur properti untuk Bounding Box
+            paint.setColor(Color.YELLOW); // Ganti warna menjadi KUNING
             paint.setStyle(Paint.Style.STROKE);
-            paint.setStrokeWidth(5);
-            paint.setTextSize(30);
-            paint.setColor(Color.WHITE); // Text color
+            paint.setStrokeWidth(8); // Mungkin Anda ingin membuat garis lebih tebal agar lebih menonjol
+
+            // Mengatur properti untuk Teks (nama kelas)
+            paint.setTextSize(40); // Perbesar ukuran teks agar lebih jelas
+            paint.setColor(Color.BLACK); // Ganti warna teks menjadi HITAM agar kontras dengan kuning
+            paint.setFakeBoldText(true); // Membuat teks menjadi tebal
+            paint.setShadowLayer(5f, 0f, 0f, Color.WHITE); // Tambahkan efek bayangan putih agar teks lebih menonjol
 
             for (Prediction prediction : detectionResponse.getPredictions()) {
                 float x = (float) prediction.getX();
@@ -219,8 +225,14 @@ public class ResultActivity extends AppCompatActivity {
                 float right = x + (width / 2);
                 float bottom = y + (height / 2);
 
+                // Gambar Bounding Box (gunakan paint yang sudah diatur untuk box)
+                // Penting: atur lagi warna untuk garis box sebelum menggambar box jika Anda mengatur warna teks di atas
+                paint.setColor(Color.YELLOW); // Setel ulang warna ke kuning untuk garis box
                 canvas.drawRect(left, top, right, bottom, paint);
-                canvas.drawText(className, left + 10, top + 30, paint); // Draw class name
+
+                // Gambar Teks (gunakan paint yang sudah diatur untuk teks)
+                paint.setColor(Color.BLACK); // Setel ulang warna ke hitam untuk teks
+                canvas.drawText(className, left + 10, top + 40, paint); // Sesuaikan posisi teks agar tidak terlalu dekat dengan box
             }
             resultImageView.setImageBitmap(mutableBitmap);
         } else {
@@ -229,7 +241,6 @@ public class ResultActivity extends AppCompatActivity {
             Toast.makeText(this, "No musical instruments detected.", Toast.LENGTH_SHORT).show();
         }
     }
-
     // New method to initialize chat when history exists
     // New method to initialize chat when history exists
     private void initializeGeminiChatFromHistory() {
