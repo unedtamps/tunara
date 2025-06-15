@@ -7,7 +7,7 @@
     android:background="#FFFFFF"
     tools:context=".ResultActivity">
 
-    <!-- FrameLayout to create the rounded corner container for the image -->
+    <!-- Image Container -->
     <FrameLayout
         android:id="@+id/imageContainerCard"
         android:layout_width="0dp"
@@ -25,10 +25,28 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="fitCenter"
+            app:shapeAppearanceOverlay="@style/RoundedCorners"
             tools:src="@tools:sample/backgrounds/scenic" />
-
     </FrameLayout>
 
+    <!-- THIS IS THE NEW TEXTVIEW FOR DETECTION RESULTS -->
+    <TextView
+        android:id="@+id/detectionResultTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="16dp"
+        android:textAlignment="center"
+        android:textColor="@android:color/black"
+        android:textSize="16sp"
+        android:textStyle="italic"
+        android:visibility="gone"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/imageContainerCard"
+        tools:text="Detected: Saron"
+        tools:visibility="visible" />
 
     <!-- RecyclerView to display the chat messages -->
     <androidx.recyclerview.widget.RecyclerView
@@ -39,9 +57,9 @@
         app:layout_constraintBottom_toTopOf="@+id/inputLayout"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageContainerCard" />
+        app:layout_constraintTop_toBottomOf="@+id/detectionResultTextView" />
 
-    <!-- Layout for the message input field and send button -->
+    <!-- Input Layout -->
     <LinearLayout
         android:id="@+id/inputLayout"
         android:layout_width="0dp"
@@ -73,7 +91,7 @@
             android:src="@android:drawable/ic_menu_send" />
     </LinearLayout>
 
-    <!-- ProgressBar to show when the API is loading -->
+    <!-- Loading ProgressBar -->
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyle"

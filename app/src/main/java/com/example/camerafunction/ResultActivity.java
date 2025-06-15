@@ -324,6 +324,7 @@ public class ResultActivity extends AppCompatActivity {
                 detectionMessageForGemini = "Pada gambar, saya mendeteksi beberapa alat musik gamelan seperti: " +
                         String.join(", ", detectedInstruments) + ".";
             }
+            addBotMessage("Sistem mendeteksi: " + detectionMessageForGemini); // Teks ini akan terlihat oleh user
 
             Content.Builder detectionContextBuilder = new Content.Builder();
             detectionContextBuilder.setRole("user");
@@ -353,7 +354,7 @@ public class ResultActivity extends AppCompatActivity {
             addBotMessage("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!");
         }
 
-        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", apiKey);
+        GenerativeModel gm = new GenerativeModel("gemini-2.0-flash", apiKey);
         GenerativeModelFutures modelFutures = GenerativeModelFutures.from(gm);
         chat = modelFutures.startChat(history);
     }
