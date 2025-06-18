@@ -1,5 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Mengganti CardView dengan FrameLayout sebagai root element -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -12,14 +14,15 @@
         android:layout_height="wrap_content"
         android:orientation="vertical">
 
+        <!-- Menggunakan ShapeableImageView untuk memotong sudut gambar -->
         <com.google.android.material.imageview.ShapeableImageView
-            xmlns:app="http://schemas.android.com/apk/res-auto"
             android:id="@+id/historyImageView"
             android:layout_width="match_parent"
-            android:layout_height="200dp"
-            android:scaleType="centerCrop"
-            tools:src="@tools:sample/backgrounds/scenic"
-            app:shapeAppearanceOverlay="@style/RoundedTopCorners"/>
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            app:shapeAppearanceOverlay="@style/RoundedTopCorners"
+            tools:src="@tools:sample/backgrounds/scenic" />
 
         <TextView
             android:id="@+id/dateTextView"
@@ -28,8 +31,8 @@
             android:layout_gravity="end"
             android:padding="8dp"
             android:textColor="@android:color/darker_gray"
-            android:textSize="12sp"
-            tools:text="June 11, 2025" />
+            android:textSize="14sp"
+            tools:text="19 Juni 2025, 05:02:30" />
 
     </LinearLayout>
 

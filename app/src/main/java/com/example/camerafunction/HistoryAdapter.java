@@ -34,7 +34,6 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoVie
     @NonNull
     @Override
     public PhotoViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Use the new card layout
         View view = LayoutInflater.from(context).inflate(R.layout.item_history_card, parent, false);
         return new PhotoViewHolder(view);
     }
@@ -61,16 +60,16 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoVie
         }
 
         public void bind(final PhotoItem item, final OnPhotoClickListener listener) {
-            // Load image using Glide
             Glide.with(itemView.getContext())
                     .load(item.getUri())
                     .into(imageView);
 
-            // Format and set the date
-            SimpleDateFormat sdf = new SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault());
+            // --- MODIFIKASI DIMULAI DI SINI ---
+            // Mengubah format tanggal untuk menyertakan waktu lengkap
+            SimpleDateFormat sdf = new SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", Locale.getDefault());
             dateTextView.setText(sdf.format(new Date(item.getTimestamp())));
+            // --- MODIFIKASI SELESAI ---
 
-            // Set click listener
             itemView.setOnClickListener(v -> listener.onPhotoClick(item.getUri()));
         }
     }
