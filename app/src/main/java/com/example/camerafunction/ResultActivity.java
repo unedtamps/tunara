@@ -96,19 +96,15 @@ public class ResultActivity extends AppCompatActivity {
             setLoading(false);
         }
 
-        // Cek apakah URI berasal dari file internal yang sudah diinferensi
         boolean isFromHistory = imageUri != null && "file".equals(imageUri.getScheme());
 
         if (isFromHistory) {
-            // Jika dari riwayat, langsung muat chat dan inisialisasi Gemini
             messageList = ChatHistoryManager.loadChatHistory(this, imageUri);
             initializeGeminiChatFromHistory();
         } else if (imageUri != null) {
-            // Jika gambar baru, lakukan deteksi
-            messageList = new ArrayList<>(); // Pastikan list kosong untuk deteksi baru
+            messageList = new ArrayList<>();
             detectObjectsWithRoboflow(imageUri, roboflowModelUrl, roboflowApiKey);
         } else {
-            // Kasus darurat jika tidak ada gambar
             messageList = new ArrayList<>();
             initializeGeminiChat(null);
         }
@@ -155,7 +151,7 @@ public class ResultActivity extends AppCompatActivity {
                     public void onFailure(Call call, IOException e) {
                         runOnUiThread(() -> {
                             setLoading(false);
-                            processDetectionResults(null, bitmap); // Tetap proses untuk menyimpan gambar asli
+                            processDetectionResults(null, bitmap);
                             initializeGeminiChat(null);
                         });
                     }
@@ -173,7 +169,7 @@ public class ResultActivity extends AppCompatActivity {
                         } else {
                             runOnUiThread(() -> {
                                 setLoading(false);
-                                processDetectionResults(null, bitmap); // Tetap proses untuk menyimpan gambar asli
+                                processDetectionResults(null, bitmap);
                                 initializeGeminiChat(null);
                             });
                         }
@@ -183,7 +179,7 @@ public class ResultActivity extends AppCompatActivity {
             } catch (IOException e) {
                 runOnUiThread(() -> {
                     setLoading(false);
-                    processDetectionResults(null, null); // Tangani error
+                    processDetectionResults(null, null);
                     initializeGeminiChat(null);
                 });
             }
@@ -226,9 +222,9 @@ public class ResultActivity extends AppCompatActivity {
         }
 
         List<String> detectedInstruments = new ArrayList<>();
-        Bitmap imageToDisplayAndSave = originalBitmap;
 
         if (detectionResponse != null && detectionResponse.getPredictions() != null && !detectionResponse.getPredictions().isEmpty()) {
+
             detectedInstruments = detectionResponse.getPredictions().stream()
                     .map(Prediction::getClassName)
                     .distinct()
@@ -274,18 +270,21 @@ public class ResultActivity extends AppCompatActivity {
                 canvas.drawRect(backgroundLeft, backgroundTop, backgroundRight, backgroundBottom, backgroundPaint);
                 canvas.drawText(className, backgroundLeft + padding, top - padding, textPaint);
             }
-            imageToDisplayAndSave = mutableBitmap;
-        }
 
-        resultImageView.setImageBitmap(imageToDisplayAndSave);
+            resultImageView.setImageBitmap(mutableBitmap);
 
-        Uri newSavedUri = PhotoHistoryManager.saveInferredImageAndGetUri(this, imageToDisplayAndSave);
+            Uri newSavedUri = PhotoHistoryManager.saveInferredImageAndGetUri(this, mutableBitmap);
 
-        if (newSavedUri != null) {
-            PhotoHistoryManager.addPhotoUri(this, newSavedUri);
-            this.imageUri = newSavedUri;
+            if (newSavedUri != null) {
+                PhotoHistoryManager.addPhotoUri(this, newSavedUri);
+                this.imageUri = newSavedUri;
+            } else {
+                Toast.makeText(this, "Gagal menyimpan gambar hasil olahan.", Toast.LENGTH_SHORT).show();
+            }
+
         } else {
-            Toast.makeText(this, "Gagal menyimpan gambar hasil olahan.", Toast.LENGTH_SHORT).show();
+            resultImageView.setImageBitmap(originalBitmap);
+            Log.d("DetectionResult", "Tidak ada deteksi, gambar tidak disimpan ke riwayat.");
         }
 
         showDetectionDialog(detectedInstruments);
@@ -307,10 +306,18 @@ public class ResultActivity extends AppCompatActivity {
     }
 
 
+    // --- METHOD INI SEKARANG LEBIH SEDERHANA DAN KOKOH ---
     private void initializeGeminiChatFromHistory() {
         String apiKey = BuildConfig.GEMINI_API_KEY;
         List<Content> history = new ArrayList<>();
 
+        // Selalu mulai sesi dengan system prompt, bahkan saat memuat dari riwayat
+        Content.Builder systemPromptBuilder = new Content.Builder();
+        systemPromptBuilder.setRole("user"); // System prompt dianggap sebagai giliran user
+        systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT);
+        history.add(systemPromptBuilder.build());
+
+        // Bangun ulang riwayat dari pesan yang tersimpan di messageList
         for (ChatMessage message : messageList) {
             String role = message.isSentByUser() ? "user" : "model";
             Content.Builder contentBuilder = new Content.Builder();
@@ -325,57 +332,70 @@ public class ResultActivity extends AppCompatActivity {
     }
 
 
+    // --- METHOD INI SEKARANG MEMILIKI LOGIKA KONTEKS YANG LEBIH BAIK ---
     private void initializeGeminiChat(RoboflowDetectionResponse detectionResponse) {
         String apiKey = BuildConfig.GEMINI_API_KEY;
         List<Content> history = new ArrayList<>();
 
+        // 1. System Prompt (tidak terlihat oleh user)
         Content.Builder systemPromptBuilder = new Content.Builder();
         systemPromptBuilder.setRole("user");
         systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT);
         history.add(systemPromptBuilder.build());
 
+        // 2. Salam pembuka awal dari model (terlihat oleh user)
         Content.Builder modelGreetingBuilder = new Content.Builder();
         modelGreetingBuilder.setRole("model");
         modelGreetingBuilder.addText("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
         history.add(modelGreetingBuilder.build());
         addBotMessage("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
 
+        // 3. Proses hasil deteksi untuk memberikan konteks pada Gemini
         if (detectionResponse != null && detectionResponse.getPredictions() != null && !detectionResponse.getPredictions().isEmpty()) {
             List<String> detectedInstruments = detectionResponse.getPredictions().stream()
                     .map(Prediction::getClassName)
                     .distinct()
                     .collect(Collectors.toList());
 
-            String detectionMessageForGemini;
+            // A. Buat pesan untuk KONTEKS INTERNAL Gemini (tidak terlihat user)
+            String detectionContextForGemini;
             if (detectedInstruments.size() == 1) {
-                detectionMessageForGemini = "Saya telah mendeteksi sebuah alat musik gamelan **" + detectedInstruments.get(0) + "** pada gambar.";
+                detectionContextForGemini = "Konteks: Alat musik yang terdeteksi di gambar adalah " + detectedInstruments.get(0) + ".";
             } else {
-                detectionMessageForGemini = "Pada gambar, saya mendeteksi beberapa alat musik gamelan seperti: " +
+                detectionContextForGemini = "Konteks: Alat musik yang terdeteksi di gambar adalah " +
                         String.join(", ", detectedInstruments) + ".";
             }
-
             Content.Builder detectionContextBuilder = new Content.Builder();
-            detectionContextBuilder.setRole("user");
-            detectionContextBuilder.addText("Berikut adalah hasil deteksi gambar: " + detectionMessageForGemini);
+            detectionContextBuilder.setRole("user"); // Konteks ini diberikan dari "sistem" ke model
+            detectionContextBuilder.addText(detectionContextForGemini);
             history.add(detectionContextBuilder.build());
 
+            // B. Buat pesan RESPON model yang akan DITAMPILKAN di UI, yang menunjukkan bahwa model punya konteks
+            String modelResponseToUser;
+            if (detectedInstruments.size() == 1) {
+                modelResponseToUser = "Baik, saya melihat ada **" + detectedInstruments.get(0) + "** pada gambar. Apa yang ingin Anda ketahui tentang alat musik ini?";
+            } else {
+                modelResponseToUser = "Baik, saya melihat ada beberapa alat musik: **" +
+                        String.join(", ", detectedInstruments) + "**. Alat musik mana yang ingin Anda diskusikan terlebih dahulu?";
+            }
             Content.Builder modelAcknowledgementBuilder = new Content.Builder();
             modelAcknowledgementBuilder.setRole("model");
-            modelAcknowledgementBuilder.addText("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!");
+            modelAcknowledgementBuilder.addText(modelResponseToUser);
             history.add(modelAcknowledgementBuilder.build());
-            addBotMessage("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!");
+            addBotMessage(modelResponseToUser); // Tampilkan respon cerdas ini ke user
 
         } else {
+            // Jika tidak ada deteksi
             Content.Builder noDetectionMessageBuilder = new Content.Builder();
             noDetectionMessageBuilder.setRole("user");
-            noDetectionMessageBuilder.addText("Tidak ada alat musik tradisional Indonesia yang terdeteksi pada gambar.");
+            noDetectionMessageBuilder.addText("Konteks: Tidak ada alat musik yang terdeteksi pada gambar.");
             history.add(noDetectionMessageBuilder.build());
 
             Content.Builder modelNoDetectionAcknowledgementBuilder = new Content.Builder();
             modelNoDetectionAcknowledgementBuilder.setRole("model");
-            modelNoDetectionAcknowledgementBuilder.addText("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!");
+            modelNoDetectionAcknowledgementBuilder.addText("Sepertinya tidak ada alat musik tradisional yang bisa saya kenali pada gambar ini. Namun, jangan khawatir! Anda tetap bisa bertanya apa saja mengenai alat musik tradisional Indonesia.");
             history.add(modelNoDetectionAcknowledgementBuilder.build());
-            addBotMessage("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!");
+            addBotMessage("Sepertinya tidak ada alat musik tradisional yang bisa saya kenali pada gambar ini. Namun, jangan khawatir! Anda tetap bisa bertanya apa saja mengenai alat musik tradisional Indonesia.");
         }
 
         GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", apiKey);
