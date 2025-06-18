@@ -34,7 +34,9 @@ android {
         }
         forEach { buildType ->
             val apiKey = properties.getProperty("GEMINI_API_KEY")
+            val rfKey = properties.getProperty("RF_API")
             buildType.buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
+            buildType.buildConfigField("String", "RF_API", "\"$rfKey\"")
         }
     }
     compileOptions {

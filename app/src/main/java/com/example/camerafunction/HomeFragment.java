@@ -28,10 +28,7 @@ public class HomeFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_home, container, false);
 
         historyRecyclerView = view.findViewById(R.id.historyRecyclerView);
-        // Use a LinearLayoutManager for a vertical list of cards
         historyRecyclerView.setLayoutManager(new LinearLayoutManager(requireContext()));
-
-        // Set up the adapter with the listener
         historyAdapter = new HistoryAdapter(requireContext(), photoItems, photoUri -> {
             Intent intent = new Intent(requireActivity(), ResultActivity.class);
             intent.putExtra("image_uri", photoUri.toString());
@@ -46,15 +43,12 @@ public class HomeFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        // Refresh the list when the fragment becomes visible again
         loadPhotoHistory();
     }
 
     private void loadPhotoHistory() {
-        // Clear the old list and load the new one
         photoItems.clear();
         photoItems.addAll(PhotoHistoryManager.getPhotoHistory(requireContext()));
-        // Notify the adapter that the data has changed
         historyAdapter.notifyDataSetChanged();
     }
 }

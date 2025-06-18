@@ -18,15 +18,11 @@ public class MainActivity extends AppCompatActivity {
 
         BottomNavigationView navView = findViewById(R.id.bottom_nav_view);
 
-        // Load the default fragment when the app starts
         if (savedInstanceState == null) {
-            // Start with HomeFragment
             loadFragment(new HomeFragment());
-            // Set the home item as selected in the nav bar
             navView.setSelectedItemId(R.id.navigation_home);
         }
 
-        // Set the listener for the navigation items
         navView.setOnItemSelectedListener(item -> {
             Fragment fragment = null;
             int itemId = item.getItemId();
@@ -47,7 +43,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void loadFragment(Fragment fragment) {
-        // Helper method to switch fragments
         FragmentManager fragmentManager = getSupportFragmentManager();
         FragmentTransaction fragmentTransaction = fragmentManager.beginTransaction();
         fragmentTransaction.replace(R.id.nav_host_fragment, fragment);

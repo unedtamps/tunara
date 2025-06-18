@@ -24,7 +24,6 @@ public class PhotoHistoryManager {
         prefs.edit().putStringSet(KEY_PHOTO_URIS, uriSet).apply();
     }
 
-    // This method is now updated to return a List of PhotoItem objects
     public static List<PhotoItem> getPhotoHistory(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         Set<String> uriStrings = prefs.getStringSet(KEY_PHOTO_URIS, new HashSet<>());
@@ -41,13 +40,11 @@ public class PhotoHistoryManager {
                     timestamp = cursor.getLong(dateColumn);
                 }
             } catch (Exception e) {
-                // Could not get date, maybe it's a file from gallery without metadata
                 timestamp = System.currentTimeMillis(); // Fallback to now
             }
             photoItems.add(new PhotoItem(uri, timestamp));
         }
 
-        // Sort by date, newest first
         Collections.sort(photoItems, (o1, o2) -> Long.compare(o2.getTimestamp(), o1.getTimestamp()));
 
         return photoItems;

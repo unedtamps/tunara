@@ -72,8 +72,8 @@ public class ResultActivity extends AppCompatActivity {
         setContentView(R.layout.activity_result);
 
         String apiKey = BuildConfig.GEMINI_API_KEY; // Gemini API Key
-        String roboflowApiKey = "JpBY4xXZGOI1oNBdoJB1"; // Your Roboflow API Key
-        String roboflowModelUrl = "https://classify.roboflow.com/ppbalatmusiktrad/2"; // Your Roboflow model endpoint
+        String roboflowApiKey = BuildConfig.RF_API;
+        String roboflowModelUrl = "https://classify.roboflow.com/ppbalatmusiktrad-a5usu/3";
 
         okHttpClient = new OkHttpClient();
         gson = new Gson();
@@ -87,10 +87,10 @@ public class ResultActivity extends AppCompatActivity {
         String imageUriString = getIntent().getStringExtra("image_uri");
         if (imageUriString != null) {
             imageUri = Uri.parse(imageUriString);
-            resultImageView.setImageURI(imageUri); // Display the original image first
+            resultImageView.setImageURI(imageUri);
         } else {
             Toast.makeText(this, "No image to display.", Toast.LENGTH_SHORT).show();
-            setLoading(false); // Ensure UI is not stuck loading
+            setLoading(false);
         }
 
         // Load chat history first
@@ -241,20 +241,16 @@ public class ResultActivity extends AppCompatActivity {
             Toast.makeText(this, "No musical instruments detected.", Toast.LENGTH_SHORT).show();
         }
     }
-    // New method to initialize chat when history exists
-    // New method to initialize chat when history exists
     private void initializeGeminiChatFromHistory() {
         String apiKey = BuildConfig.GEMINI_API_KEY;
 
         List<Content> history = new ArrayList<>();
-        // Add the Maestro Genta system prompt as the very first content
         Content.Builder systemPromptBuilder = new Content.Builder();
         systemPromptBuilder.setRole("user"); // System prompts are typically given as a user turn
         systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT); // Call addText
         Content systemPromptContent = systemPromptBuilder.build(); // Then call build
         history.add(systemPromptContent);
 
-        // Add the model's initial greeting, following the system prompt
         Content.Builder initialGreetingBuilder = new Content.Builder(); // Declare a new builder
         initialGreetingBuilder.setRole("model");
         initialGreetingBuilder.addText("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
@@ -262,13 +258,7 @@ public class ResultActivity extends AppCompatActivity {
         history.add(initialGreetingContent);
 
 
-        // Reconstruct the Gemini chat history from messageList, skipping the Maestro Genta system prompt
-        // and initial greeting if they are in messageList as displayed to user.
-        // It's crucial that the Gemini model's history directly reflects the conversation turns,
-        // without including UI-specific "Sistem" messages or duplicate initial greetings.
         for (ChatMessage message : messageList) {
-            // Skip messages that are internal system messages or the initial bot greeting
-            // if they were added to messageList just for display purposes
             if (message.getMessageText().startsWith("Sistem:") ||
                     message.getMessageText().equals("Terima kasih atas informasinya. Saya siap menjawab pertanyaan Anda mengenai alat musik yang terdeteksi!") ||
                     message.getMessageText().equals("Baik, meskipun tidak ada alat musik yang terdeteksi, saya tetap siap membantu Anda dengan informasi seputar alat musik tradisional Indonesia lainnya. Silakan bertanya!")) {
@@ -282,7 +272,7 @@ public class ResultActivity extends AppCompatActivity {
             history.add(contentBuilder.build());
         }
 
-        GenerativeModel gm = new GenerativeModel("gemini-1.5-flash", apiKey);
+        GenerativeModel gm = new GenerativeModel("gemini-2.0-flash", apiKey);
         GenerativeModelFutures modelFutures = GenerativeModelFutures.from(gm);
         chat = modelFutures.startChat(history);
     }
