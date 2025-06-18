@@ -15,6 +15,7 @@ okhttp-bom = "4.12.0"
 okhttp = "4.12.0"
 okhttp-logging-interceptor = "4.12.0"
 gson = "2.10.1"
+photoview = "2.3.0"
 
 
 [libraries]
@@ -38,6 +39,7 @@ okhttp-bom = { group = "com.squareup.okhttp3", name = "okhttp-bom", version.ref 
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp-logging-interceptor" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
+photoview = { group = "com.github.chrisbanes", name = "PhotoView", version.ref = "photoview" }
 
 
 [plugins]

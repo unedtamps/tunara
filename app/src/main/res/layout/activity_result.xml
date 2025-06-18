@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
@@ -7,68 +7,57 @@
     android:background="#FFFFFF"
     tools:context=".ResultActivity">
 
-    <!-- Image Container -->
-    <FrameLayout
-        android:id="@+id/imageContainerCard"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:layout_margin="16dp"
-        android:background="@drawable/custom_card_background"
-        android:elevation="0dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintHeight_percent="0.6"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent">
+    <!-- Kontainer yang bisa di-scroll untuk gambar dan chat -->
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/inputLayout"
+        android:fillViewport="true">
 
-        <com.google.android.material.imageview.ShapeableImageView
-            android:id="@+id/resultImageView"
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:scaleType="fitCenter"
-            app:shapeAppearanceOverlay="@style/RoundedCorners"
-            tools:src="@tools:sample/backgrounds/scenic" />
-    </FrameLayout>
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
-    <!-- THIS IS THE NEW TEXTVIEW FOR DETECTION RESULTS -->
-    <TextView
-        android:id="@+id/detectionResultTextView"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginEnd="16dp"
-        android:textAlignment="center"
-        android:textColor="@android:color/black"
-        android:textSize="16sp"
-        android:textStyle="italic"
-        android:visibility="gone"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/imageContainerCard"
-        tools:text="Detected: Saron"
-        tools:visibility="visible" />
+            <!-- Kontainer gambar -->
+            <FrameLayout
+                android:id="@+id/imageContainerCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="16dp"
+                android:background="@drawable/custom_card_background"
+                android:elevation="0dp">
 
-    <!-- RecyclerView to display the chat messages -->
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/chatRecyclerView"
-        android:layout_width="0dp"
-        android:layout_height="0dp"
-        android:padding="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/inputLayout"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/detectionResultTextView" />
+                <!-- Menggunakan PhotoView agar gambar bisa di-zoom -->
+                <com.github.chrisbanes.photoview.PhotoView
+                    android:id="@+id/resultImageView"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:adjustViewBounds="true"
+                    tools:src="@tools:sample/backgrounds/scenic" />
 
-    <!-- Input Layout -->
+            </FrameLayout>
+
+            <!-- RecyclerView untuk menampilkan chat -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/chatRecyclerView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                android:padding="8dp" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Kolom input yang posisinya tetap di bawah -->
     <LinearLayout
         android:id="@+id/inputLayout"
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:background="?android:attr/windowBackground"
         android:orientation="horizontal"
-        android:padding="8dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent">
+        android:padding="8dp">
 
         <EditText
             android:id="@+id/messageEditText"
@@ -91,17 +80,14 @@
             android:src="@android:drawable/ic_menu_send" />
     </LinearLayout>
 
-    <!-- Loading ProgressBar -->
+    <!-- ProgressBar untuk loading -->
     <ProgressBar
         android:id="@+id/progressBar"
         style="?android:attr/progressBarStyle"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
         android:visibility="gone"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
         tools:visibility="visible" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+</RelativeLayout>

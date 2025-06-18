@@ -72,5 +72,6 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging.interceptor) // Optional: for network request logging
     implementation(libs.gson) // For JSON parsing
+    implementation(libs.photoview)
 
 }
