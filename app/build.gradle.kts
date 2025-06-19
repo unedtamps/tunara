@@ -75,5 +75,7 @@ dependencies {
     implementation(libs.photoview)
     implementation(libs.markwon.core)
     implementation(libs.markwon.linkify)
+    implementation("io.noties.markwon:core:4.6.2")
+    implementation("io.noties.markwon:linkify:4.6.2")
 
 }

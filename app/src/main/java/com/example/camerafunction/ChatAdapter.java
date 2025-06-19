@@ -4,16 +4,20 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import java.util.List;
+
+import io.noties.markwon.Markwon;
 
 public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHolder> {
 
     private static final int VIEW_TYPE_SENT = 1;
     private static final int VIEW_TYPE_RECEIVED = 2;
 
-    private List<ChatMessage> messageList;
+    private final List<ChatMessage> messageList;
 
     public ChatAdapter(List<ChatMessage> messageList) {
         this.messageList = messageList;
@@ -21,11 +25,7 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
 
     @Override
     public int getItemViewType(int position) {
-        if (messageList.get(position).isSentByUser()) {
-            return VIEW_TYPE_SENT;
-        } else {
-            return VIEW_TYPE_RECEIVED;
-        }
+        return messageList.get(position).isSentByUser() ? VIEW_TYPE_SENT : VIEW_TYPE_RECEIVED;
     }
 
     @NonNull
@@ -37,13 +37,20 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
         } else {
             view = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_chat_received, parent, false);
         }
-        return new MessageViewHolder(view);
+        return new MessageViewHolder(view, viewType);
     }
 
     @Override
     public void onBindViewHolder(@NonNull MessageViewHolder holder, int position) {
         ChatMessage message = messageList.get(position);
-        holder.messageTextView.setText(message.getMessageText());
+
+        if (getItemViewType(position) == VIEW_TYPE_SENT) {
+            holder.userMessageText.setText(message.getMessageText());
+        } else {
+            // Render markdown on bot message
+            Markwon markwon = Markwon.create(holder.itemView.getContext());
+            markwon.setMarkdown(holder.botMessageText, message.getMessageText());
+        }
     }
 
     @Override
@@ -52,11 +59,16 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.MessageViewHol
     }
 
     static class MessageViewHolder extends RecyclerView.ViewHolder {
-        TextView messageTextView;
+        TextView userMessageText;
+        TextView botMessageText;
 
-        public MessageViewHolder(@NonNull View itemView) {
+        public MessageViewHolder(@NonNull View itemView, int viewType) {
             super(itemView);
-            messageTextView = itemView.findViewById(R.id.messageTextView);
+            if (viewType == VIEW_TYPE_SENT) {
+                userMessageText = itemView.findViewById(R.id.userMessageText);
+            } else {
+                botMessageText = itemView.findViewById(R.id.botMessageText);
+            }
         }
     }
 }

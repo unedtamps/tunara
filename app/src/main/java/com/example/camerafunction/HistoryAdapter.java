@@ -14,6 +14,7 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Random;
 
 public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoViewHolder> {
 
@@ -34,7 +35,6 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoVie
     @NonNull
     @Override
     public PhotoViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Use the new card layout
         View view = LayoutInflater.from(context).inflate(R.layout.item_history_card, parent, false);
         return new PhotoViewHolder(view);
     }
@@ -52,31 +52,36 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoVie
 
     static class PhotoViewHolder extends RecyclerView.ViewHolder {
         ImageView imageView;
-        TextView dateTextView;
+        TextView titleSection, properties;
 
         public PhotoViewHolder(@NonNull View itemView) {
             super(itemView);
-            imageView = itemView.findViewById(R.id.historyImageView);
-            dateTextView = itemView.findViewById(R.id.dateTextView);
+            imageView = itemView.findViewById(R.id.imageThumbnail);
+            titleSection = itemView.findViewById(R.id.titleSection);
+            properties = itemView.findViewById(R.id.properties);
         }
 
         public void bind(final PhotoItem item, final OnPhotoClickListener listener) {
-            // Load image using Glide
             Glide.with(itemView.getContext())
                     .load(item.getUri())
+                    .centerCrop()
                     .into(imageView);
 
-            // Contoh teks - sesuaikan dengan data aslimu kalau ada
-            titleSection.setText("Angklung Detected");
-            properties.setText("First • Second • Final");
-            // --- MODIFIKASI DIMULAI DI SINI ---
-            // Mengubah format tanggal untuk menyertakan waktu lengkap
-            SimpleDateFormat sdf = new SimpleDateFormat("dd MMMM yyyy, HH:mm:ss", Locale.getDefault());
-            dateTextView.setText(sdf.format(new Date(item.getTimestamp())));
-            // --- MODIFIKASI SELESAI ---
+            // Mendapatkan nama file dari URI untuk judul
+            String[] pathSegments = item.getUri().getPath().split("/");
+            String fileName = pathSegments[pathSegments.length-1];
+            // Membersihkan nama file
+            String cleanTitle = fileName.replace("INFERRED_", "").replace(".jpg", "").replace("_", " ");
 
-            // Set click listener
+            titleSection.setText("Hasil Deteksi " + cleanTitle);
+
+            // Format tanggal untuk properti
+            SimpleDateFormat sdf = new SimpleDateFormat("dd MMM yyyy • HH:mm", Locale.getDefault());
+            String dateProperty = sdf.format(new Date(item.getTimestamp()));
+
+            properties.setText(dateProperty);
+
             itemView.setOnClickListener(v -> listener.onPhotoClick(item.getUri()));
-        }
-    }
+                            }
+                }
 }

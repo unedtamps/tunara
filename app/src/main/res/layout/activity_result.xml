@@ -20,23 +20,23 @@
             android:orientation="vertical">
 
             <!-- Kontainer gambar -->
-            <FrameLayout
+            <androidx.cardview.widget.CardView
                 android:id="@+id/imageContainerCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_margin="16dp"
-                android:background="@drawable/custom_card_background"
-                android:elevation="0dp">
+                android:layout_margin="30dp"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="6dp"
+                app:cardUseCompatPadding="true">
 
-                <!-- Menggunakan PhotoView agar gambar bisa di-zoom -->
+                <!-- Zoomable image -->
                 <com.github.chrisbanes.photoview.PhotoView
                     android:id="@+id/resultImageView"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:adjustViewBounds="true"
                     tools:src="@tools:sample/backgrounds/scenic" />
-
-            </FrameLayout>
+            </androidx.cardview.widget.CardView>
 
             <!-- RecyclerView untuk menampilkan chat -->
             <androidx.recyclerview.widget.RecyclerView
