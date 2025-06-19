@@ -7,13 +7,13 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
+
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
-import java.text.SimpleDateFormat;
-import java.util.Date;
+
 import java.util.List;
-import java.util.Locale;
 
 public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoViewHolder> {
 
@@ -34,7 +34,6 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoVie
     @NonNull
     @Override
     public PhotoViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        // Use the new card layout
         View view = LayoutInflater.from(context).inflate(R.layout.item_history_card, parent, false);
         return new PhotoViewHolder(view);
     }
@@ -52,25 +51,24 @@ public class HistoryAdapter extends RecyclerView.Adapter<HistoryAdapter.PhotoVie
 
     static class PhotoViewHolder extends RecyclerView.ViewHolder {
         ImageView imageView;
-        TextView dateTextView;
+        TextView titleSection, properties;
 
         public PhotoViewHolder(@NonNull View itemView) {
             super(itemView);
-            imageView = itemView.findViewById(R.id.historyImageView);
-            dateTextView = itemView.findViewById(R.id.dateTextView);
+            imageView = itemView.findViewById(R.id.imageThumbnail);
+            titleSection = itemView.findViewById(R.id.titleSection);
+            properties = itemView.findViewById(R.id.properties);
         }
 
         public void bind(final PhotoItem item, final OnPhotoClickListener listener) {
-            // Load image using Glide
             Glide.with(itemView.getContext())
                     .load(item.getUri())
                     .into(imageView);
 
-            // Format and set the date
-            SimpleDateFormat sdf = new SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault());
-            dateTextView.setText(sdf.format(new Date(item.getTimestamp())));
+            // Contoh teks - sesuaikan dengan data aslimu kalau ada
+            titleSection.setText("Angklung Detected");
+            properties.setText("First • Second • Final");
 
-            // Set click listener
             itemView.setOnClickListener(v -> listener.onPhotoClick(item.getUri()));
         }
     }
