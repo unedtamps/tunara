@@ -16,6 +16,7 @@ okhttp = "4.12.0"
 okhttp-logging-interceptor = "4.12.0"
 gson = "2.10.1"
 photoview = "2.3.0"
+markwon = "4.6.2"
 
 
 [libraries]
@@ -40,12 +41,16 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 okhttp-logging-interceptor = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp-logging-interceptor" }
 gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 photoview = { group = "com.github.chrisbanes", name = "PhotoView", version.ref = "photoview" }
+markwon-core = { group = "io.noties.markwon", name = "core", version.ref = "markwon" }
+markwon-linkify = { group = "io.noties.markwon", name = "linkify", version.ref = "markwon" }
 
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 
 [bundles]
+markwon = ["markwon-core", "markwon-linkify"]
+
 # The bundle remains the same
 camera = [
     "camera-core",

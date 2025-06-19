@@ -7,14 +7,20 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Rect;
+import android.graphics.drawable.ColorDrawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.text.Html; // Import ditambahkan untuk memformat teks
 import android.util.Base64;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
@@ -291,33 +297,57 @@ public class ResultActivity extends AppCompatActivity {
     }
 
     private void showDetectionDialog(List<String> detectedInstruments) {
+        View dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_detection_result, null);
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Hasil Deteksi Gambar");
+        builder.setView(dialogView);
+
+        final AlertDialog dialog = builder.create();
+
+        ImageView dialogIcon = dialogView.findViewById(R.id.dialog_icon);
+        TextView dialogTitle = dialogView.findViewById(R.id.dialog_title);
+        TextView dialogMessage = dialogView.findViewById(R.id.dialog_message);
+        Button okButton = dialogView.findViewById(R.id.dialog_button_ok);
 
         if (detectedInstruments != null && !detectedInstruments.isEmpty()) {
-            String instruments = String.join("\n- ", detectedInstruments);
-            builder.setMessage("Alat musik yang terdeteksi:\n- " + instruments);
+            dialogIcon.setImageResource(R.drawable.ic_success_checkmark);
+            dialogTitle.setText("Deteksi Berhasil");
+
+            // --- MODIFIKASI DIMULAI DI SINI ---
+            String instruments = String.join(", ", detectedInstruments);
+            String messageText = "Alat musik yang berhasil dikenali:<br><br><b>" + instruments + "</b>";
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.N) {
+                dialogMessage.setText(Html.fromHtml(messageText, Html.FROM_HTML_MODE_LEGACY));
+            } else {
+                dialogMessage.setText(Html.fromHtml(messageText));
+            }
+            // --- MODIFIKASI SELESAI ---
+
         } else {
-            builder.setMessage("Tidak ada alat musik yang terdeteksi pada gambar ini.");
+            dialogIcon.setImageResource(R.drawable.ic_not_found);
+            dialogTitle.setText("Tidak Ditemukan");
+            dialogMessage.setText("Maaf, tidak ada alat musik yang dapat kami kenali pada gambar ini.");
         }
 
-        builder.setPositiveButton("OK", (dialog, which) -> dialog.dismiss());
-        builder.create().show();
+        okButton.setOnClickListener(v -> dialog.dismiss());
+
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+        }
+
+        dialog.show();
     }
 
 
-    // --- METHOD INI SEKARANG LEBIH SEDERHANA DAN KOKOH ---
     private void initializeGeminiChatFromHistory() {
         String apiKey = BuildConfig.GEMINI_API_KEY;
         List<Content> history = new ArrayList<>();
 
-        // Selalu mulai sesi dengan system prompt, bahkan saat memuat dari riwayat
         Content.Builder systemPromptBuilder = new Content.Builder();
-        systemPromptBuilder.setRole("user"); // System prompt dianggap sebagai giliran user
+        systemPromptBuilder.setRole("user");
         systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT);
         history.add(systemPromptBuilder.build());
 
-        // Bangun ulang riwayat dari pesan yang tersimpan di messageList
         for (ChatMessage message : messageList) {
             String role = message.isSentByUser() ? "user" : "model";
             Content.Builder contentBuilder = new Content.Builder();
@@ -332,32 +362,27 @@ public class ResultActivity extends AppCompatActivity {
     }
 
 
-    // --- METHOD INI SEKARANG MEMILIKI LOGIKA KONTEKS YANG LEBIH BAIK ---
     private void initializeGeminiChat(RoboflowDetectionResponse detectionResponse) {
         String apiKey = BuildConfig.GEMINI_API_KEY;
         List<Content> history = new ArrayList<>();
 
-        // 1. System Prompt (tidak terlihat oleh user)
         Content.Builder systemPromptBuilder = new Content.Builder();
         systemPromptBuilder.setRole("user");
         systemPromptBuilder.addText(MAESTRO_GENTA_SYSTEM_PROMPT);
         history.add(systemPromptBuilder.build());
 
-        // 2. Salam pembuka awal dari model (terlihat oleh user)
         Content.Builder modelGreetingBuilder = new Content.Builder();
         modelGreetingBuilder.setRole("model");
         modelGreetingBuilder.addText("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
         history.add(modelGreetingBuilder.build());
         addBotMessage("Salam! Saya Maestro Genta. Silakan bertanya tentang alat musik tradisional Indonesia.");
 
-        // 3. Proses hasil deteksi untuk memberikan konteks pada Gemini
         if (detectionResponse != null && detectionResponse.getPredictions() != null && !detectionResponse.getPredictions().isEmpty()) {
             List<String> detectedInstruments = detectionResponse.getPredictions().stream()
                     .map(Prediction::getClassName)
                     .distinct()
                     .collect(Collectors.toList());
 
-            // A. Buat pesan untuk KONTEKS INTERNAL Gemini (tidak terlihat user)
             String detectionContextForGemini;
             if (detectedInstruments.size() == 1) {
                 detectionContextForGemini = "Konteks: Alat musik yang terdeteksi di gambar adalah " + detectedInstruments.get(0) + ".";
@@ -366,11 +391,10 @@ public class ResultActivity extends AppCompatActivity {
                         String.join(", ", detectedInstruments) + ".";
             }
             Content.Builder detectionContextBuilder = new Content.Builder();
-            detectionContextBuilder.setRole("user"); // Konteks ini diberikan dari "sistem" ke model
+            detectionContextBuilder.setRole("user");
             detectionContextBuilder.addText(detectionContextForGemini);
             history.add(detectionContextBuilder.build());
 
-            // B. Buat pesan RESPON model yang akan DITAMPILKAN di UI, yang menunjukkan bahwa model punya konteks
             String modelResponseToUser;
             if (detectedInstruments.size() == 1) {
                 modelResponseToUser = "Baik, saya melihat ada **" + detectedInstruments.get(0) + "** pada gambar. Apa yang ingin Anda ketahui tentang alat musik ini?";
@@ -382,10 +406,9 @@ public class ResultActivity extends AppCompatActivity {
             modelAcknowledgementBuilder.setRole("model");
             modelAcknowledgementBuilder.addText(modelResponseToUser);
             history.add(modelAcknowledgementBuilder.build());
-            addBotMessage(modelResponseToUser); // Tampilkan respon cerdas ini ke user
+            addBotMessage(modelResponseToUser);
 
         } else {
-            // Jika tidak ada deteksi
             Content.Builder noDetectionMessageBuilder = new Content.Builder();
             noDetectionMessageBuilder.setRole("user");
             noDetectionMessageBuilder.addText("Konteks: Tidak ada alat musik yang terdeteksi pada gambar.");
