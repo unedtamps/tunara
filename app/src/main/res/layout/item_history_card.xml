@@ -1,45 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- Mengganti CardView dengan FrameLayout sebagai root element -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_margin="12dp"
-    app:cardCornerRadius="16dp"
-    app:cardElevation="4dp"
-    app:cardUseCompatPadding="true">
+    android:layout_margin="8dp"
+    android:background="@drawable/custom_card_background"
+    android:elevation="4dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:padding="12dp">
+        android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/imageThumbnail"
+        <!-- Menggunakan ShapeableImageView untuk memotong sudut gambar -->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/historyImageView"
             android:layout_width="match_parent"
-            android:layout_height="180dp"
-            android:scaleType="centerCrop"
-            android:background="@drawable/rounded_bg"
-            android:contentDescription="Image preview" />
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitCenter"
+            app:shapeAppearanceOverlay="@style/RoundedTopCorners"
+            tools:src="@tools:sample/backgrounds/scenic" />
 
         <TextView
-            android:id="@+id/titleSection"
+            android:id="@+id/dateTextView"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Section title"
-            android:textStyle="bold"
-            android:textSize="16sp"
-            android:textColor="@android:color/black"
-            android:layout_marginTop="12dp" />
-
-        <TextView
-            android:id="@+id/properties"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="First property  •  Second  •  Final"
-            android:textSize="13sp"
+            android:layout_gravity="end"
+            android:padding="8dp"
             android:textColor="@android:color/darker_gray"
-            android:layout_marginTop="4dp" />
+            android:textSize="14sp"
+            tools:text="19 Juni 2025, 05:02:30" />
 
     </LinearLayout>
-</androidx.cardview.widget.CardView>
+
+</FrameLayout>

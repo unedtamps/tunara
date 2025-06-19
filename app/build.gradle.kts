@@ -73,5 +73,7 @@ dependencies {
     implementation(libs.okhttp.logging.interceptor) // Optional: for network request logging
     implementation(libs.gson) // For JSON parsing
     implementation(libs.photoview)
+    implementation(libs.markwon.core)
+    implementation(libs.markwon.linkify)
 
 }
