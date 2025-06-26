@@ -14,20 +14,22 @@
         android:orientation="vertical"
         android:padding="24dp">
 
+        <!-- Ganti dengan logo Tunara -->
         <ImageView
             android:id="@+id/app_logo"
             android:layout_width="120dp"
             android:layout_height="120dp"
             android:layout_marginTop="32dp"
             android:contentDescription="App Logo"
-            android:src="@mipmap/ic_launcher_round" />
+            android:src="@drawable/tunara_logo" />
 
+        <!-- Ganti nama aplikasi -->
         <TextView
             android:id="@+id/app_name_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="24dp"
-            android:text="Aluna"
+            android:text="Tunara"
             android:textColor="@android:color/black"
             android:textSize="28sp"
             android:textStyle="bold" />
@@ -46,7 +48,7 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="32dp"
             android:gravity="center"
-            android:text="Aplikasi ini didedikasikan untuk mengenali dan memberikan informasi mendalam mengenai berbagai alat musik tradisional yang menjadi kekayaan budaya Indonesia. Cukup ambil foto, dan biarkan Maestro Genta memandu Anda."
+            android:text="Tunara adalah aplikasi yang membantu mengenali dan memahami alat musik tradisional Indonesia. Cukup ambil atau unggah foto, dan biarkan Maestro Genta memandu Anda dengan penjelasan mendalam dan interaktif."
             android:lineSpacingMultiplier="1.2"
             android:textSize="16sp" />
 
